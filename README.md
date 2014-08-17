@@ -4,6 +4,7 @@
 [![Latest Stable Version](https://poser.pugx.org/indigophp/fuel-doctrine/v/stable.png)](https://packagist.org/packages/indigophp/fuel-doctrine)
 [![Total Downloads](https://poser.pugx.org/indigophp/fuel-doctrine/downloads.png)](https://packagist.org/packages/indigophp/fuel-doctrine)
 [![License](https://poser.pugx.org/indigophp/fuel-doctrine/license.png)](https://packagist.org/packages/indigophp/fuel-doctrine)
+[![Dependency Status](http://www.versioneye.com/user/projects/53f01cd113bb060798000815/badge.svg?style=flat)](http://www.versioneye.com/user/projects/53f01cd113bb060798000815)
 
 **This package is a wrapper around [doctrine/doctrine2](https://github.com/doctrine/doctrine2) package.**
 
