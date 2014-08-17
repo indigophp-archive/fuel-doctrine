@@ -1,0 +1,34 @@
+{
+    "name": "indigophp/fuel-doctrine",
+    "type": "fuel-package",
+    "description": "Fuel Doctrine 2 integration",
+    "license": "MIT",
+    "keywords": ["fuel", "doctrine2"],
+    "homepage": "https://indigophp.com",
+    "authors": [
+        {
+            "name": "Márk Sági-Kazár",
+            "email": "mark.sagikazar@gmail.com"
+        }
+    ],
+    "require": {
+        "composer/installers": "~1.0",
+        "indigophp/fuel-core": "~1.0",
+        "indigophp/fuel-dbal": "dev-develop",
+        "doctrine/orm": "~2.4"
+    },
+    "require-dev": {
+        "codeception/codeception": "~2.0.0",
+        "indigophp/codeception-fuel-module": "dev-develop"
+    },
+    "autoload": {
+        "psr-4": {
+            "Indigo\\Fuel\\Doctrine\\": "classes/"
+        }
+    },
+    "extra": {
+        "installer-name": "doctrine"
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
