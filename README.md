@@ -28,6 +28,9 @@ Via Composer
 $em = \Doctrine\Manager::forge('default');
 ```
 
+
+### Configuration
+
 To make it work, you need the following `doctrine` configuration.
 
 ``` php
@@ -57,7 +60,30 @@ You can also use the `Setup` class to auto configure the `Configuration` object.
 ```
 
 
-**Note:** this package uses [indigophp/fuel-dbal](https://github.com/indigophp/fuel-dbal) for connections. Check the package documentation.
+**Note:** This package uses [indigophp/fuel-dbal](https://github.com/indigophp/fuel-dbal) for connections. Check the package documentation.
+
+
+### Running `doctrine` commands
+
+Doctrine comes with a CLI tool by default, however it is a bit hard use it the official way (`cli-config.php` in the project root folder). So I wrapped it in an `oil` command. It is working, but it is still just a hack ("oil" and "r" or "refine" are just removed from the argument list), so use it with caution.
+
+Example:
+``` bash
+oil r doctrine orm:schema-tool:drop --force
+oil r doctrine orm:schema-tool:create
+```
+
+General syntax:
+``` bash
+oil r doctrine [command]
+```
+
+If you want to use a specific Manager instance put a DB env var before the command:
+``` bash
+DB=my_doctrine_instance oil r doctrine [command]
+```
+
+**Note:** Make sure the `doctrine` package is loaded in fuel otherwise the task will not work.
 
 
 ## Testing
