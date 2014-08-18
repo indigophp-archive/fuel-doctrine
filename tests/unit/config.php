@@ -10,13 +10,9 @@
  */
 
 return [
-	'default' => [
-		'dbal'                        => 'default',
-		'proxy_dir'                   => '/tmp',
-		'proxy_namespace'             => 'PrOxYnAmEsPaCe',
-		'auto_generate_proxy_classes' => true,
-		'metadata_path'               => '',
-		'metadata_driver'             => 'xml',
-		'cache_driver'                => 'array',
-	],
+	'dbal'                        => 'default',
+	'proxy_dir'                   => '/tmp',
+	'proxy_namespace'             => 'PrOxYnAmEsPaCe',
+	'auto_generate_proxy_classes' => true,
+	'cache_driver'                => 'array',
 ];

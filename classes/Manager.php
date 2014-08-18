@@ -44,36 +44,82 @@ class Manager extends \Facade
 	);
 
 	/**
-	 * Map metadata driver types to class names
+	 * Entity Manager config
 	 *
 	 * @var array
 	 */
-	protected static $metadata_drivers = array(
-		'php'             => 'PHPDriver',
-		'simplified_xml'  => 'SimplifiedXmlDriver',
-		'simplified_yaml' => 'SimplifiedYamlDriver',
-		'xml'             => 'XmlDriver',
-		'yaml'            => 'YamlDriver'
-	);
+	protected $config = array();
+
+	/**
+	 * Mapping object
+	 *
+	 * @var Mapping
+	 */
+	protected $mapping;
+
+	/**
+	 * Entity Manager
+	 *
+	 * @var EntityManager
+	 */
+	protected $entityManager;
 
 	/**
 	 * {@inheritdoc}
 	 */
-	public static function forge($instance = 'default')
+	public static function forge($instance = 'default', Mapping $mapping = null)
 	{
-		$conf = \Config::get('doctrine.' . $instance, array());
+		$config = \Config::get('doctrine', array());
+		$managers = \Arr::get($config, 'manager', array());
+		$manager = \Arr::get($managers, $instance, array());
 
-		// Cache can be null in case of auto setup
-		if ($cache = \Arr::get($conf, 'cache_driver', 'array'))
+		\Arr::delete($config, 'manager');
+
+		$config = array_merge($config, $manager);
+
+		if (\Arr::get($config, 'auto_mapping', false) and count($managers) > 1)
 		{
-			$cache = static::createCache($cache);
+			throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
+		}
+
+		if ($mapping === null)
+		{
+			$mapping = new \Doctrine\Mapping(\Arr::get($config, 'mapping', array()), \Arr::get($config, 'auto_mapping',false));
+		}
+
+		return static::newInstance($instance, new static($config, $mapping));
+	}
+
+	/**
+	 * Creates a new Manager
+	 *
+	 * @param array   $config
+	 * @param Mapping $mapping
+	 */
+	public function __construct(array $config, Mapping $mapping)
+	{
+		$this->config = $config;
+		$this->mapping = $mapping;
+	}
+
+	/**
+	 * Creates a new Entity Manager
+	 *
+	 * @return EntityManager
+	 */
+	protected function createEntityManager()
+	{
+		// Cache can be null in case of auto setup
+		if ($cache = \Arr::get($this->config, 'cache_driver', 'array'))
+		{
+			$cache = $this->createCache($cache);
 		}
 
 		// Auto or manual setup
-		if (\Arr::get($conf, 'auto_config', false))
+		if (\Arr::get($this->config, 'auto_config', false))
 		{
-			$dev = \Arr::get($conf, 'dev_mode', \Fuel::$env === \Fuel::DEVELOPMENT);
-			$proxy_dir = \Arr::get($conf, 'proxy_dir');
+			$dev = \Arr::get($this->config, 'dev_mode', \Fuel::$env === \Fuel::DEVELOPMENT);
+			$proxy_dir = \Arr::get($this->config, 'proxy_dir');
 
 			$config = Setup::createConfiguration($dev, $proxy_dir, $cache);
 		}
@@ -81,9 +127,9 @@ class Manager extends \Facade
 		{
 			$config = new Configuration;
 
-			$config->setProxyDir(\Arr::get($conf, 'proxy_dir'));
-			$config->setProxyNamespace(\Arr::get($conf, 'proxy_namespace'));
-			$config->setAutoGenerateProxyClasses(\Arr::get($conf, 'auto_generate_proxy_classes', false));
+			$config->setProxyDir(\Arr::get($this->config, 'proxy_dir'));
+			$config->setProxyNamespace(\Arr::get($this->config, 'proxy_namespace'));
+			$config->setAutoGenerateProxyClasses(\Arr::get($this->config, 'auto_generate_proxy_classes', false));
 
 			if ($cache)
 			{
@@ -93,24 +139,37 @@ class Manager extends \Facade
 			}
 		}
 
-		$metadata_driver = \Arr::get($conf, 'metadata_driver');
-		$metadata_path = \Arr::get($conf, 'metadata_path');
+		$this->mapping->registerMapping($config);
 
-		if ($metadata_driver === 'annotation')
-		{
-			$metadata = $config->newDefaultAnnotationDriver($metadata_path);
-		}
-		else
-		{
-			$metadata = static::createMetadata($metadata_driver, $metadata_path);
-		}
-
-		$config->setMetadataDriverImpl($metadata);
-
-		$conn = \Dbal::forge(\Arr::get($conf, 'dbal', 'default'));
+		$conn = \Dbal::forge(\Arr::get($this->config, 'dbal', 'default'));
 		$em = $conn->getEventManager();
 
-		return static::newInstance($instance, EntityManager::create($conn, $config, $em));
+		return $this->entityManager = EntityManager::create($conn, $config, $em);
+	}
+
+	/**
+	 * Returns the Entity Manager
+	 *
+	 * @return EntityManager
+	 */
+	public function getEntityManager()
+	{
+		if ($this->entityManager === null)
+		{
+			return $this->createEntityManager();
+		}
+
+		return $this->entityManager;
+	}
+
+	/**
+	 * Returns the Mapping object
+	 *
+	 * @return Mapping
+	 */
+	public function getMapping()
+	{
+		return $this->mapping;
 	}
 
 	/**
@@ -135,29 +194,5 @@ class Manager extends \Facade
 		}
 
 		throw new ORMException('Invalid cache driver: ' . $driver);
-	}
-
-	/**
-	 * Creates a new Mapping Driver object
-	 *
-	 * @param string $driver Driver name or class name
-	 *
-	 * @return Doctrine\Common\Persistence\Mapping\Driver\MappingDriver
-	 */
-	public static function createMetadata($driver, $path)
-	{
-		$class = $driver;
-
-		if (array_key_exists($driver, static::$metadata_drivers))
-		{
-			$class = 'Doctrine\\ORM\\Mapping\\Driver\\' . static::$metadata_drivers[$driver];
-		}
-
-		if (class_exists($class))
-		{
-			return new $class($path);
-		}
-
-		throw new ORMException('Invalid metadata driver: ' . $driver);
 	}
 }

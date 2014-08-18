@@ -46,11 +46,6 @@ class ManagerTest extends Test
 	{
 		return [
 			0 => [[]],
-			1 => [
-				[
-					'metadata_driver' => 'annotation',
-				]
-			],
 			2 => [
 				[
 					'auto_config' => true,
@@ -60,18 +55,39 @@ class ManagerTest extends Test
 	}
 
 	/**
-	 * @covers       ::forge
 	 * @dataProvider configProvider
 	 */
 	public function testForge(array $config)
 	{
 		// Override config
-		$c = \Config::get('doctrine.default', []);
-		\Config::set('doctrine.default', array_merge($c, $config));
+		$c = \Config::get('doctrine', []);
+		\Config::set('doctrine', array_merge($c, $config));
 
-		$em = Manager::forge();
+		$manager = Manager::forge();
 
-		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em);
+		$this->assertInstanceOf('Doctrine\\Manager', $manager);
+		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em = $manager->getEntityManager());
+		$this->assertSame($em, $manager->getEntityManager());
+		$this->assertInstanceOf('Doctrine\\Mapping', $manager->getMapping());
+	}
+
+	/**
+	 * @expectedException LogicException
+	 */
+	public function testForgeFailure()
+	{
+		// Override config
+		$config = [
+			'auto_mapping' => true,
+			'manager' => [
+				'asd',
+				'dsa',
+			],
+		];
+		$c = \Config::get('doctrine', []);
+		\Config::set('doctrine', array_merge($c, $config));
+
+		$manager = Manager::forge();
 	}
 
 	/**
@@ -91,24 +107,5 @@ class ManagerTest extends Test
 	public function testCacheFailure()
 	{
 		$cache = Manager::createCache('fake');
-	}
-
-	/**
-	 * @covers ::createMetadata
-	 */
-	public function testMetadata()
-	{
-		$cache = Manager::createMetadata('xml', '');
-
-		$this->assertInstanceOf('Doctrine\\Common\\Persistence\\Mapping\\Driver\\MappingDriver', $cache);
-	}
-
-	/**
-	 * @covers            ::createMetadata
-	 * @expectedException Doctrine\ORM\ORMException
-	 */
-	public function testMetadataFailure()
-	{
-		$cache = Manager::createMetadata('fake', '');
 	}
 }
