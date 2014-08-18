@@ -55,12 +55,18 @@ class MappingTest extends Test
 		],
 	];
 
+	/**
+	 * {@inheritdoc}
+	 */
 	public function _before()
 	{
 		is_dir(APPPATH.'classes/Entity') === false and mkdir(APPPATH.'classes/Entity');
 		$this->mapping = new Mapping($this->mappingInfo);
 	}
 
+	/**
+	 * {@inheritdoc}
+	 */
 	public function _after()
 	{
 		\Package::loaded('auth') and \Package::unload('auth');

@@ -89,23 +89,4 @@ class ManagerTest extends Test
 
 		$manager = Manager::forge();
 	}
-
-	/**
-	 * @covers ::createCache
-	 */
-	public function testCache()
-	{
-		$cache = Manager::createCache('array');
-
-		$this->assertInstanceOf('Doctrine\\Common\\Cache\\Cache', $cache);
-	}
-
-	/**
-	 * @covers            ::createCache
-	 * @expectedException Doctrine\ORM\ORMException
-	 */
-	public function testCacheFailure()
-	{
-		$cache = Manager::createCache('fake');
-	}
 }

@@ -14,7 +14,6 @@ namespace Indigo\Fuel\Doctrine;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Tools\Setup;
-use Doctrine\ORM\ORMException;
 
 /**
  * Entity Manager Facade
@@ -29,19 +28,6 @@ class Manager extends \Facade
 	 * {@inheritdoc}
 	 */
 	protected static $_config = 'doctrine';
-
-	/**
-	 * Map cache driver types to class names
-	 *
-	 * @var array
-	 */
-	protected static $cache_drivers = array(
-		'array'    => 'ArrayCache',
-		'apc'      => 'ApcCache',
-		'xcache'   => 'XcacheCache',
-		'wincache' => 'WinCache',
-		'zend'     => 'ZendDataCache',
-	);
 
 	/**
 	 * Entity Manager config
@@ -112,7 +98,7 @@ class Manager extends \Facade
 		// Cache can be null in case of auto setup
 		if ($cache = \Arr::get($this->config, 'cache_driver', 'array'))
 		{
-			$cache = $this->createCache($cache);
+			$cache = \Doctrine\Cache::create($cache);
 		}
 
 		// Auto or manual setup
@@ -170,29 +156,5 @@ class Manager extends \Facade
 	public function getMapping()
 	{
 		return $this->mapping;
-	}
-
-	/**
-	 * Creates a new Cache object
-	 *
-	 * @param string $driver Driver name or class name
-	 *
-	 * @return Doctrine\Common\Cache\Cache
-	 */
-	public static function createCache($driver)
-	{
-		$class = $driver;
-
-		if (array_key_exists($driver, static::$cache_drivers))
-		{
-			$class = 'Doctrine\\Common\\Cache\\' . static::$cache_drivers[$driver];
-		}
-
-		if (class_exists($class))
-		{
-			return new $class;
-		}
-
-		throw new ORMException('Invalid cache driver: ' . $driver);
 	}
 }
