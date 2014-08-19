@@ -25,45 +25,60 @@ Via Composer
 ## Usage
 
 ``` php
-$em = \Doctrine\Manager::forge('default');
+$manager = \Doctrine\Manager::forge('default');
+
+$em = $manager->getEntityManager();
 ```
 
 
-### Configuration
+## Configuration
 
 To make it work, you need the following `doctrine` configuration.
 
 ``` php
-'default' => array(
 	'dbal'                        => 'default',
 	'proxy_dir'                   => '/tmp',
 	'proxy_namespace'             => 'PrOxYnAmEsPaCe',
 	'auto_generate_proxy_classes' => true,
-	'metadata_path'               => '',
-	'metadata_driver'             => 'xml',
+	'mappings'                    => array(
+		'mapping' => array(
+			'type'   => 'xml',
+			'dir'    => '/mypath',
+			'prefix' => 'MyPrefix',
+		),
+	),
 	'cache_driver'                => 'array',
-),
 ```
 
 You can also use the `Setup` class to auto configure the `Configuration` object.
 
 ``` php
-	'default' => [
-		'dbal'            => 'default',
-		'auto_config'     => true,
-		'dev_mode'        => \Fuel::$env === \Fuel::DEVELOPMENT,
-		'proxy_dir'       => '/tmp',
-		'metadata_path'   => '',
-		'metadata_driver' => 'xml',
-		'cache_driver'    => 'array',
-	],
+	'dbal'            => 'default',
+	'auto_config'     => true,
+	'dev_mode'        => \Fuel::$env === \Fuel::DEVELOPMENT,
+	'proxy_dir'       => '/tmp',
+	'cache_driver'    => 'array',
+```
+
+
+### Multiple managers
+
+By default you have one manager (`default`). If you would like use multiple managers, you have to add a key `managers` to your doctrine config, and set your configurations there. You can also set global configurations in the config root. Make sure to set `auto_mapping` to `false`.
+
+``` php
+	'auto_mapping'    => false,
+	'dbal'            => 'default',
+	'managers'        => array(
+		'default'   => array(),
+		'aditional' => array()
+	),
 ```
 
 
 **Note:** This package uses [indigophp/fuel-dbal](https://github.com/indigophp/fuel-dbal) for connections. Check the package documentation.
 
 
-### Running `doctrine` commands
+## Running `doctrine` commands
 
 Doctrine comes with a CLI tool by default, however it is a bit hard use it the official way (`cli-config.php` in the project root folder). So I wrapped it in an `oil` command. It is working, but it is still just a hack ("oil" and "r" or "refine" are just removed from the argument list), so use it with caution.
 
