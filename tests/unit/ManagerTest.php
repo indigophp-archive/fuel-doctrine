@@ -46,9 +46,14 @@ class ManagerTest extends Test
 	{
 		return [
 			0 => [[]],
-			2 => [
+			1 => [
 				[
 					'auto_config' => true,
+				]
+			],
+			2 => [
+				[
+					'behaviors' => ['translatable', 'timestampable'],
 				]
 			],
 		];

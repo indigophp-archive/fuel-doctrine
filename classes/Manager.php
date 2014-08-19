@@ -14,7 +14,6 @@ namespace Indigo\Fuel\Doctrine;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Tools\Setup;
-use Gedmo\DoctrineExtensions;
 
 /**
  * Entity Manager Facade
@@ -129,9 +128,18 @@ class Manager extends \Facade
 		$this->mapping->registerMapping($config);
 
 		$conn = \Dbal::forge(\Arr::get($this->config, 'dbal', 'default'));
-		$em = $conn->getEventManager();
+		$evm = $conn->getEventManager();
 
-		return $this->entityManager = EntityManager::create($conn, $config, $em);
+		if ($behaviors = \Arr::get($this->config, 'behaviors'))
+		{
+			$behavior = new \Doctrine\Behavior($behaviors);
+
+			$behavior->initReader($cache);
+			$behavior->registerMapping($config->getMetadataDriverImpl());
+			$behavior->registerSubscribers($evm);
+		}
+
+		return $this->entityManager = EntityManager::create($conn, $config, $evm);
 	}
 
 	/**
