@@ -79,7 +79,7 @@ class ManagerTest extends Test
 		// Override config
 		$config = [
 			'auto_mapping' => true,
-			'manager' => [
+			'managers' => [
 				'asd',
 				'dsa',
 			],
