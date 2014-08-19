@@ -56,10 +56,10 @@ class Manager extends \Facade
 	public static function forge($instance = 'default', Mapping $mapping = null)
 	{
 		$config = \Config::get('doctrine', array());
-		$managers = \Arr::get($config, 'manager', array());
+		$managers = \Arr::get($config, 'managers', array());
 		$manager = \Arr::get($managers, $instance, array());
 
-		\Arr::delete($config, 'manager');
+		\Arr::delete($config, 'managers');
 
 		$config = array_merge($config, $manager);
 
@@ -70,7 +70,7 @@ class Manager extends \Facade
 
 		if ($mapping === null)
 		{
-			$mapping = new \Doctrine\Mapping(\Arr::get($config, 'mapping', array()), \Arr::get($config, 'auto_mapping',false));
+			$mapping = new \Doctrine\Mapping(\Arr::get($config, 'mappings', array()), \Arr::get($config, 'auto_mapping',false));
 		}
 
 		return static::newInstance($instance, new static($config, $mapping));
@@ -128,9 +128,18 @@ class Manager extends \Facade
 		$this->mapping->registerMapping($config);
 
 		$conn = \Dbal::forge(\Arr::get($this->config, 'dbal', 'default'));
-		$em = $conn->getEventManager();
+		$evm = $conn->getEventManager();
 
-		return $this->entityManager = EntityManager::create($conn, $config, $em);
+		if ($behaviors = \Arr::get($this->config, 'behaviors'))
+		{
+			$behavior = new \Doctrine\Behavior($behaviors);
+
+			$behavior->initReader($cache);
+			$behavior->registerMapping($config->getMetadataDriverImpl());
+			$behavior->registerSubscribers($evm);
+		}
+
+		return $this->entityManager = EntityManager::create($conn, $config, $evm);
 	}
 
 	/**

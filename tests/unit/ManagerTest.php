@@ -46,9 +46,14 @@ class ManagerTest extends Test
 	{
 		return [
 			0 => [[]],
-			2 => [
+			1 => [
 				[
 					'auto_config' => true,
+				]
+			],
+			2 => [
+				[
+					'behaviors' => ['translatable', 'timestampable'],
 				]
 			],
 		];
@@ -79,7 +84,7 @@ class ManagerTest extends Test
 		// Override config
 		$config = [
 			'auto_mapping' => true,
-			'manager' => [
+			'managers' => [
 				'asd',
 				'dsa',
 			],

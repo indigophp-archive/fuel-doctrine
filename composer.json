@@ -15,7 +15,8 @@
         "composer/installers": "~1.0",
         "indigophp/fuel-core": "~1.0",
         "indigophp/fuel-dbal": "dev-develop",
-        "doctrine/orm": "~2.4"
+        "doctrine/orm": "~2.4",
+        "gedmo/doctrine-extensions": "~2.3"
     },
     "require-dev": {
         "codeception/codeception": "~2.0.0",
