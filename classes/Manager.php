@@ -53,27 +53,48 @@ class Manager extends \Facade
 	/**
 	 * {@inheritdoc}
 	 */
-	public static function forge($instance = 'default', Mapping $mapping = null)
+	public static function forge($instance = null, Mapping $mapping = null)
 	{
-		$config = \Config::get('doctrine', array());
-		$managers = \Arr::get($config, 'managers', array());
-		$manager = \Arr::get($managers, $instance, array());
-
-		\Arr::delete($config, 'managers');
-
-		$config = array_merge($config, $manager);
-
-		if (\Arr::get($config, 'auto_mapping', false) and count($managers) > 1)
+		// Try to get the default instance
+		if ($instance === null)
 		{
-			throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
+			static::$_instance = $instance = \Config::get('doctrine.default_manager', 'default');
+		}
+
+		// Remove some keys from config, not used anymore
+		$config = \Config::get('doctrine', array());
+		$config = \Arr::filter_keys($config, array('default_manager', 'managers'), true);
+
+		// We have defined managers
+		if ($managers = \Config::get('doctrine.managers', false))
+		{
+			// Get managers and retrive manager specific configuration
+			$manager = \Arr::get($managers, $instance, array());
+
+			$manager = array_merge($config, $manager);
+
+			if (\Arr::get($manager, 'auto_mapping', false) and count($managers) > 1)
+			{
+				throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
+			}
+		}
+		elseif ($instance === static::$_instance)
+		{
+			$manager = $config;
+		}
+
+		// We don't have any data
+		if (empty($manager))
+		{
+			throw new \InvalidArgumentException('No manager data for this instance: ' . $instance);
 		}
 
 		if ($mapping === null)
 		{
-			$mapping = new \Doctrine\Mapping(\Arr::get($config, 'mappings', array()), \Arr::get($config, 'auto_mapping',false));
+			$mapping = new \Doctrine\Mapping(\Arr::get($manager, 'mappings', array()), \Arr::get($manager, 'auto_mapping',false));
 		}
 
-		return static::newInstance($instance, new static($config, $mapping));
+		return static::newInstance($instance, new static($manager, $mapping));
 	}
 
 	/**

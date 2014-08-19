@@ -30,7 +30,7 @@ class ManagerTest extends Test
 	{
 		$root = \Codeception\Configuration::projectDir();
 
-		$db = require $root.'/fuel/packages/dbal/tests/unit/config.php';
+		$db = require $root.'/fuel/packages/dbal/tests/unit/config/db.php';
 		$config = require __DIR__.'/config.php';
 
 		\Config::set('db', $db);
