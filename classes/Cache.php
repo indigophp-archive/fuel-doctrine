@@ -25,7 +25,7 @@ class Cache
 	 *
 	 * @var array
 	 */
-	protected static $cache_drivers = array(
+	protected static $drivers = array(
 		'array'    => 'ArrayCache',
 		'apc'      => 'ApcCache',
 		'xcache'   => 'XcacheCache',
@@ -44,9 +44,9 @@ class Cache
 	{
 		$class = $driver;
 
-		if (array_key_exists($driver, static::$cache_drivers))
+		if (array_key_exists($driver, static::$drivers))
 		{
-			$class = 'Doctrine\\Common\\Cache\\' . static::$cache_drivers[$driver];
+			$class = 'Doctrine\\Common\\Cache\\' . static::$drivers[$driver];
 		}
 
 		if (class_exists($class))

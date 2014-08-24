@@ -30,9 +30,6 @@ class BehaviorTest extends Test
 	 */
 	protected $behavior;
 
-	/**
-	 * {@inheritdoc}
-	 */
 	public function _before()
 	{
 		$this->behavior = new Behavior(['translatable', 'timestampable']);

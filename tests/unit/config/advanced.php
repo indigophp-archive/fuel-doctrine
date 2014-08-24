@@ -10,9 +10,8 @@
  */
 
 return [
-	'dbal'                        => 'default',
-	'proxy_dir'                   => '/tmp',
-	'proxy_namespace'             => 'PrOxYnAmEsPaCe',
-	'auto_generate_proxy_classes' => true,
-	'cache_driver'                => 'array',
+	'managers' => [
+		'default' => [],
+		'test'    => [],
+	],
 ];
