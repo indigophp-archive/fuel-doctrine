@@ -11,9 +11,13 @@
 
 namespace Indigo\Fuel\Doctrine;
 
+use Doctrine\Common\Annotations\CachedReader;
+use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Tools\Setup;
+use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
+use Doctrine\ORM\Mapping\Driver\DriverChain;
 
 /**
  * Entity Manager Facade
@@ -23,25 +27,12 @@ use Doctrine\ORM\Tools\Setup;
 class Manager extends \Facade
 {
 	use \Indigo\Core\Facade\Instance;
+	use \Indigo\Core\Helper\Config;
 
 	/**
 	 * {@inheritdoc}
 	 */
 	protected static $_config = 'doctrine';
-
-	/**
-	 * Entity Manager config
-	 *
-	 * @var array
-	 */
-	protected $config = array();
-
-	/**
-	 * Mapping object
-	 *
-	 * @var Mapping
-	 */
-	protected $mapping;
 
 	/**
 	 * Entity Manager
@@ -53,7 +44,7 @@ class Manager extends \Facade
 	/**
 	 * {@inheritdoc}
 	 */
-	public static function forge($instance = null, Mapping $mapping = null)
+	public static function forge($instance = null)
 	{
 		// Try to get the default instance
 		if ($instance === null)
@@ -73,7 +64,7 @@ class Manager extends \Facade
 
 			$manager = array_merge($config, $manager);
 
-			if (\Arr::get($manager, 'auto_mapping', false) and count($managers) > 1)
+			if (\Arr::get($manager, 'mapping.auto', false) and count($managers) > 1)
 			{
 				throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
 			}
@@ -89,24 +80,22 @@ class Manager extends \Facade
 			throw new \InvalidArgumentException('No manager data for this instance: ' . $instance);
 		}
 
-		if ($mapping === null)
-		{
-			$mapping = new \Doctrine\Mapping(\Arr::get($manager, 'mappings', array()), \Arr::get($manager, 'auto_mapping',false));
-		}
-
-		return static::newInstance($instance, new static($manager, $mapping));
+		return static::newInstance($instance, new static($manager));
 	}
 
 	/**
 	 * Creates a new Manager
 	 *
-	 * @param array   $config
-	 * @param Mapping $mapping
+	 * @param array $config
 	 */
-	public function __construct(array $config, Mapping $mapping)
+	public function __construct(array $config)
 	{
 		$this->config = $config;
-		$this->mapping = $mapping;
+
+		if ($this->getConfig('mapping.auto', false))
+		{
+			$this->autoLoadMappingInfo();
+		}
 	}
 
 	/**
@@ -117,16 +106,16 @@ class Manager extends \Facade
 	protected function createEntityManager()
 	{
 		// Cache can be null in case of auto setup
-		if ($cache = \Arr::get($this->config, 'cache_driver', 'array'))
+		if ($cache = $this->getConfig('cache_driver', 'array'))
 		{
 			$cache = \Doctrine\Cache::create($cache);
 		}
 
 		// Auto or manual setup
-		if (\Arr::get($this->config, 'auto_config', false))
+		if ($this->getConfig('auto_config', false))
 		{
-			$dev = \Arr::get($this->config, 'dev_mode', \Fuel::$env === \Fuel::DEVELOPMENT);
-			$proxy_dir = \Arr::get($this->config, 'proxy_dir');
+			$dev = $this->getConfig('dev_mode', \Fuel::$env === \Fuel::DEVELOPMENT);
+			$proxy_dir = $this->getConfig('proxy_dir');
 
 			$config = Setup::createConfiguration($dev, $proxy_dir, $cache);
 		}
@@ -134,9 +123,9 @@ class Manager extends \Facade
 		{
 			$config = new Configuration;
 
-			$config->setProxyDir(\Arr::get($this->config, 'proxy_dir'));
-			$config->setProxyNamespace(\Arr::get($this->config, 'proxy_namespace'));
-			$config->setAutoGenerateProxyClasses(\Arr::get($this->config, 'auto_generate_proxy_classes', false));
+			$config->setProxyDir($this->getConfig('proxy_dir'));
+			$config->setProxyNamespace($this->getConfig('proxy_namespace'));
+			$config->setAutoGenerateProxyClasses($this->getConfig('auto_generate_proxy_classes', false));
 
 			if ($cache)
 			{
@@ -146,19 +135,10 @@ class Manager extends \Facade
 			}
 		}
 
-		$this->mapping->registerMapping($config);
+		$this->registerMapping($config);
 
-		$conn = \Dbal::forge(\Arr::get($this->config, 'dbal', 'default'));
+		$conn = \Dbal::forge($this->getConfig('dbal', 'default'));
 		$evm = $conn->getEventManager();
-
-		if ($behaviors = \Arr::get($this->config, 'behaviors'))
-		{
-			$behavior = new \Doctrine\Behavior($behaviors);
-
-			$behavior->initReader($cache);
-			$behavior->registerMapping($config->getMetadataDriverImpl());
-			$behavior->registerSubscribers($evm);
-		}
 
 		return $this->entityManager = EntityManager::create($conn, $config, $evm);
 	}
@@ -179,12 +159,387 @@ class Manager extends \Facade
 	}
 
 	/**
-	 * Returns the Mapping object
+	 * Returns mapping config
 	 *
-	 * @return Mapping
+	 * @return array
 	 */
-	public function getMapping()
+	public function getMappings()
 	{
-		return $this->mapping;
+		return $this->getConfig('mappings', array());
+	}
+
+	/**
+	 * Sets a mapping configuration
+	 *
+	 * @param string $mappingName
+	 * @param array  $mappingConfig
+	 *
+	 * @return this
+	 */
+	public function setMappings($mappingName, array $mappingConfig = null)
+	{
+		if (is_array($mappingName) === false)
+		{
+			$mappingName = array($mappingName => $mappingConfig);
+		}
+
+		\Arr::set($this->config['mappings'], $mappingName);
+
+		return $this;
+	}
+
+	/**
+	 * Returns default extension
+	 *
+	 * @return string
+	 */
+	public function getExtension()
+	{
+		return $this->getConfig('mapping.extension', 'dcm');
+	}
+
+	/**
+	 * Returns default config path
+	 *
+	 * @return string
+	 */
+	public function getConfigPath()
+	{
+		return $this->getConfig('mapping.config_path', 'config'.DS.'doctrine'.DS);
+	}
+
+	/**
+	 * Returns default class path
+	 *
+	 * @return string
+	 */
+	public function getClassPath()
+	{
+		return $this->getConfig('mapping.class_path', 'classes'.DS);
+	}
+
+	/**
+	 * Returns default object name
+	 *
+	 * @return string
+	 */
+	public function getObjectName()
+	{
+		return $this->getConfig('mapping.object_name', 'Entity');
+	}
+
+	/**
+	 * Generates mapping information for packages, modules and the app
+	 *
+	 * @return array
+	 */
+	protected function autoLoadMappingInfo()
+	{
+		$mappings = array();
+
+		foreach (\Package::loaded() as $package => $path)
+		{
+			$mappings[] = $package . '::package';
+		}
+
+		foreach (\Module::loaded() as $module => $path)
+		{
+			$mappings[] = $module . '::module';
+		}
+
+		$mappings[] = 'app';
+
+		$mappings = array_fill_keys($mappings, array('is_component' => true));
+
+		$this->setMappings($mappings);
+	}
+
+	/**
+	 * Registers mapping in a Configuration
+	 *
+	 * @param Configuration $config
+	 */
+	public function registerMapping(Configuration $config)
+	{
+		$driverChain = new DriverChain;
+		$aliasMap = array();
+
+		$this->parseMappingInfo();
+
+		foreach ($this->getMappings() as $mappingName => $mappingConfig)
+		{
+			if ($mappingConfig['type'] === 'annotation')
+			{
+				$driver = $config->newDefaultAnnotationDriver($mappingConfig['dir']);
+				// Annotations are needed to be registered, thanks Doctrine
+				// $driver = new AnnotationDriver(
+				// 	new CachedReader(
+				// 		new AnnotationReader,
+				// 		$config->getMetadataCacheImpl()
+				// 	),
+				// 	$mappingConfig['dir']
+				// );
+			}
+			else
+			{
+				$driver = \Doctrine\Metadata::create($mappingConfig['type'], $mappingConfig['dir']);
+			}
+
+			if (empty($mappingConfig['prefix']) or count($this->config['mappings']) === 1)
+			{
+				$driverChain->setDefaultDriver($driver);
+			}
+			else
+			{
+				$driverChain->addDriver($driver, $mappingConfig['prefix']);
+			}
+
+			if (isset($mappingConfig['alias']))
+			{
+				$aliasMap[$mappingConfig['alias']] = $mappingConfig['prefix'];
+			}
+		}
+
+		$config->setMetadataDriverImpl($driverChain);
+		$config->setEntityNamespaces($aliasMap);
+	}
+
+	/**
+	 * Parses mapping info
+	 *
+	 * @return array
+	 */
+	public function parseMappingInfo()
+	{
+		$mappings = array();
+
+		foreach ($this->getMappings() as $mappingName => $mappingConfig)
+		{
+			// This is from symfony DoctrineBundle, should be reviewed
+			if (is_array($mappingConfig) === false or \Arr::get($mappingConfig, 'mapping', true) === false)
+			{
+				continue;
+			}
+
+			$mappingConfig = array_replace(array(
+				'dir'    => false,
+				'type'   => false,
+				'prefix' => false,
+			), $mappingConfig);
+
+			if (isset($mappingConfig['is_component']) === false)
+			{
+				$mappingConfig['is_component'] = false;
+
+				if (is_dir($mappingConfig['dir']) === false)
+				{
+					$mappingConfig['is_component'] = (\Package::loaded($mappingName) or \Module::loaded($mappingName));
+				}
+			}
+
+			if ($mappingConfig['is_component'])
+			{
+				$mappingConfig = $this->getComponentDefaults($mappingName, $mappingConfig);
+			}
+
+			if (empty($mappingConfig))
+			{
+				continue;
+			}
+
+			$mappings[$mappingName] = $mappingConfig;
+		}
+
+		$this->config['mappings'] = $mappings;
+	}
+
+	/**
+	 * Returns default settings for components
+	 *
+	 * @param string $mappingName
+	 * @param array  $mappingConfig
+	 *
+	 * @return array
+	 */
+	protected function getComponentDefaults($mappingName, array $mappingConfig)
+	{
+		if (strpos($mappingName, '::'))
+		{
+			list($componentName, $componentType) = explode('::', $mappingName);
+		}
+		else
+		{
+			$componentName = $mappingName;
+
+			$componentType = $this->detectComponentType($componentName);
+
+			if ($componentType === false and $componentName === 'app')
+			{
+				$componentType = 'app';
+			}
+		}
+
+		if (($componentPath = $this->getComponentPath($componentName, $componentType)) === false)
+		{
+			return false;
+		}
+
+		$configPath = $mappingConfig['dir'];
+
+		if ($configPath === false)
+		{
+			$configPath = $this->getConfigPath();
+		}
+
+		if ($mappingConfig['type'] === false)
+		{
+			$mappingConfig['type'] = $this->detectMetadataDriver($componentPath, $configPath);
+		}
+
+		if ($mappingConfig['type'] === false)
+		{
+			return false;
+		}
+
+		if ($mappingConfig['dir'] === false)
+		{
+			if (in_array($mappingConfig['type'], array('annotation', 'staticphp')))
+			{
+				$mappingConfig['dir'] = $this->getClassPath().$this->getObjectName();
+			}
+			else
+			{
+				$mappingConfig['dir'] = $configPath;
+			}
+		}
+
+		if (is_array($mappingConfig['dir']))
+		{
+			foreach ($mappingConfig['dir'] as &$path)
+			{
+				$path = $componentPath . $path;
+			}
+		}
+		else
+		{
+			$mappingConfig['dir'] = $componentPath . $mappingConfig['dir'];
+		}
+
+		if ($mappingConfig['prefix'] === false)
+		{
+			$mappingConfig['prefix'] = $this->detectComponentNamespace($componentName, $componentType);
+		}
+
+		// Set this to false to prevent reinitialization on subsequent load calls
+		$mappingConfig['is_component'] = false;
+
+		return $mappingConfig;
+	}
+
+	/**
+	 * Detects component type from name
+	 *
+	 * @param string $componentName
+	 *
+	 * @return string
+	 */
+	protected function detectComponentType($componentName)
+	{
+		if (\Package::loaded($componentName))
+		{
+			return 'package';
+		}
+		elseif (\Module::loaded($componentName))
+		{
+			return 'module';
+		}
+
+		return false;
+	}
+
+	/**
+	 * Returns a path based on component type
+	 *
+	 * @param string $componentName
+	 * @param string $componentType
+	 *
+	 * @return string
+	 */
+	public function getComponentPath($componentName, $componentType = 'app')
+	{
+		switch ($componentType)
+		{
+			case 'package':
+				return \Package::exists($componentName);
+				break;
+
+			case 'module':
+				return \Module::exists($componentName);
+				break;
+
+			case 'app':
+				return APPPATH;
+				break;
+
+			default:
+				return false;
+				break;
+		}
+	}
+
+	/**
+	 * Detects which metadata driver to use for the supplied directory
+	 *
+	 * @param string       $dir        A directory path
+	 * @param string|array $configPath Config path or paths
+	 *
+	 * @return string|null A metadata driver short name, if one can be detected
+	 */
+	protected function detectMetadataDriver($dir, $configPath)
+	{
+		$extension = $this->getExtension();
+
+		foreach ((array) $configPath as $cPath)
+		{
+			$path = $dir.DS.$cPath.DS;
+
+			if (($files = glob($path.'*.'.$extension.'.xml')) && count($files))
+			{
+				return 'xml';
+			}
+			elseif (($files = glob($path.'*.'.$extension.'.yml')) && count($files))
+			{
+				return 'yml';
+			}
+			elseif (($files = glob($path.'*.'.$extension.'.php')) && count($files))
+			{
+				return 'php';
+			}
+		}
+
+		if (is_dir($dir.DS.$this->getClassPath().$this->getObjectName()))
+		{
+			return 'annotation';
+		}
+
+		return false;
+	}
+
+	/**
+	 * Detects component namespace
+	 *
+	 * @param string $componentName
+	 * @param string $componentType
+	 *
+	 * @return string
+	 */
+	protected function detectComponentNamespace($componentName, $componentType)
+	{
+		if ($componentType === 'app')
+		{
+			return '';
+		}
+
+		return trim(str_replace(array('_', '-'), '\\', \Inflector::classify($componentName)), '\\');
 	}
 }

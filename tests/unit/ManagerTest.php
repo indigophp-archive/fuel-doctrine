@@ -23,75 +23,189 @@ use Codeception\TestCase\Test;
  */
 class ManagerTest extends Test
 {
-	/**
-	 * {@inheritdoc}
-	 */
+	protected $manager;
+
 	public function _before()
 	{
+		is_dir(APPPATH.'classes/Entity') === false and mkdir(APPPATH.'classes/Entity');
+
 		$root = \Codeception\Configuration::projectDir();
 
 		$db = require $root.'/fuel/packages/dbal/tests/unit/config/db.php';
-		$config = require __DIR__.'/config.php';
+		$config = require __DIR__.'/config/doctrine.php';
 
 		\Config::set('db', $db);
+		\Config::set('doctrine', $config);
+
+		$this->manager = Manager::forge();
+
+		\Package::load('auth');
+		\Module::load(['module', 'module2', 'module3', 'module4']);
+	}
+
+	// public function _after()
+	// {
+	// 	\Package::unload('auth');
+	// 	\Module::unload(['module', 'module2', 'module3', 'module4']);
+	// }
+
+	/**
+	 * Loads advanced config
+	 */
+	public function advancedConfig()
+	{
+		$config = require __DIR__.'/config/advanced.php';
+		$config = array_merge(\Config::get('doctrine', []), $config);
+
 		\Config::set('doctrine', $config);
 	}
 
 	/**
-	 * Provides config override
-	 *
-	 * @return []
+	 * @covers ::forge
 	 */
-	public function configProvider()
+	public function testForge()
 	{
-		return [
-			0 => [[]],
-			1 => [
-				[
-					'auto_config' => true,
-				]
-			],
-			2 => [
-				[
-					'behaviors' => ['translatable', 'timestampable'],
-				]
-			],
-		];
-	}
-
-	/**
-	 * @dataProvider configProvider
-	 */
-	public function testForge(array $config)
-	{
-		// Override config
-		$c = \Config::get('doctrine', []);
-		\Config::set('doctrine', array_merge($c, $config));
+		\Config::delete('doctrine.managers');
 
 		$manager = Manager::forge();
 
-		$this->assertInstanceOf('Doctrine\\Manager', $manager);
-		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em = $manager->getEntityManager());
-		$this->assertSame($em, $manager->getEntityManager());
-		$this->assertInstanceOf('Doctrine\\Mapping', $manager->getMapping());
+		$this->assertInstanceOf('Indigo\\Fuel\\Doctrine\\Manager', $manager);
 	}
 
 	/**
+	 * @covers ::forge
+	 */
+	public function testAdvancedForge()
+	{
+		$this->advancedConfig();
+
+		\Config::set('doctrine.mapping.auto', false);
+
+		$manager = Manager::forge();
+
+		$this->assertInstanceOf('Indigo\\Fuel\\Doctrine\\Manager', $manager);
+	}
+
+	/**
+	 * @covers            ::forge
 	 * @expectedException LogicException
 	 */
-	public function testForgeFailure()
+	public function testForgeAutoMapping()
 	{
-		// Override config
+		$this->advancedConfig();
+
+		Manager::forge();
+	}
+
+	/**
+	 * @covers            ::forge
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testForgeInvalid()
+	{
+		Manager::forge('invalid');
+	}
+
+	/**
+	 * @covers ::__construct
+	 * @covers ::autoLoadMappingInfo
+	 */
+	public function testConstruct()
+	{
 		$config = [
-			'auto_mapping' => true,
-			'managers' => [
-				'asd',
-				'dsa',
+			'mapping' => [
+				'auto' => true,
 			],
 		];
-		$c = \Config::get('doctrine', []);
-		\Config::set('doctrine', array_merge($c, $config));
 
-		$manager = Manager::forge();
+		$manager = new Manager($config);
+
+		$this->assertArrayHasKey('mapping', $manager->getConfig());
+	}
+
+	/**
+	 * @covers ::getMappings
+	 * @covers ::setMappings
+	 */
+	public function testMappings()
+	{
+		$this->assertSame($this->manager, $this->manager->setMappings('test', []));
+		$this->assertEquals($this->manager->getConfig('mappings'), $this->manager->getMappings());
+	}
+
+	/**
+	 * @covers ::getExtension
+	 * @covers ::getConfigPath
+	 * @covers ::getClassPath
+	 * @covers ::getObjectName
+	 */
+	public function testDefault()
+	{
+		$this->assertEquals('dcm', $this->manager->getExtension());
+		$this->assertEquals('config/doctrine/', $this->manager->getConfigPath());
+		$this->assertEquals('classes/', $this->manager->getClassPath());
+		$this->assertEquals('Entity', $this->manager->getObjectName());
+	}
+
+	public function testParse()
+	{
+		$this->manager->parseMappingInfo();
+
+		$actual = $this->manager->getMappings();
+
+		$expected = array_filter(\Config::get('doctrine.mappings'));
+		$expected['test']['is_component'] = false;
+
+		$this->assertArrayHasKey('test', $actual);
+		$this->assertEquals($expected['test'], $actual['test']);
+
+		$this->assertArrayHasKey('module::module', $actual);
+		$this->assertArrayHasKey('module2::module', $actual);
+		$this->assertArrayHasKey('module3::module', $actual);
+		$this->assertArrayHasKey('module4::module', $actual);
+
+		$this->assertEquals('xml', $actual['module::module']['type']);
+		$this->assertEquals('yml', $actual['module2::module']['type']);
+		$this->assertEquals('php', $actual['module3::module']['type']);
+		$this->assertEquals('annotation', $actual['module4::module']['type']);
+	}
+
+	public function testRegister()
+	{
+		$config = \Mockery::mock('Doctrine\\ORM\\Configuration');
+
+		$config->shouldReceive('newDefaultAnnotationDriver')
+			->andReturn(\Mockery::mock('Doctrine\\ORM\\Mapping\\Driver\\AnnotationDriver'));
+
+		$config->shouldReceive('setMetadataDriverImpl')
+			->andReturn(null);
+
+		$config->shouldReceive('setEntityNamespaces')
+			->andReturn(null);
+
+		$this->manager->registerMapping($config);
+	}
+
+	/**
+	 * @covers ::createEntityManager
+	 * @covers ::getEntityManager
+	 */
+	public function testEntityManager()
+	{
+		$em = $this->manager->getEntityManager();
+
+		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em);
+		$this->assertSame($em, $this->manager->getEntityManager());
+	}
+
+	/**
+	 * @covers ::createEntityManager
+	 */
+	public function testEntityManagerAutoConfig()
+	{
+		$em = $this->manager->setConfig('auto_config', true);
+		$em = $this->manager->getEntityManager();
+
+		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em);
 	}
 }
