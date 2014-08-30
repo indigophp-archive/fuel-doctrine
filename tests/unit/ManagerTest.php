@@ -208,4 +208,38 @@ class ManagerTest extends Test
 
 		$this->assertInstanceOf('Doctrine\\ORM\\EntityManager', $em);
 	}
+
+	/**
+	 * @covers ::registerBehaviors
+	 * @covers ::configureBehavior
+	 */
+	public function testBehavior()
+	{
+		$this->manager->setConfig('behaviors', [
+			'translatable'
+		]);
+
+		$em = $this->manager->getEntityManager();
+
+		$evm = $em->getEventManager();
+
+		$this->assertTrue($evm->hasListeners('postLoad'));
+		$this->assertTrue($evm->hasListeners('postPersist'));
+		$this->assertTrue($evm->hasListeners('preFlush'));
+		$this->assertTrue($evm->hasListeners('onFlush'));
+		$this->assertTrue($evm->hasListeners('loadClassMetadata'));
+	}
+
+	/**
+	 * @covers            ::registerBehaviors
+	 * @expectedException InvalidArgumentException
+	 */
+	public function testInvalidBehavior()
+	{
+		$this->manager->setConfig('behaviors', [
+			'fakeable'
+		]);
+
+		$em = $this->manager->getEntityManager();
+	}
 }

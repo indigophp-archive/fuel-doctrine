@@ -18,6 +18,9 @@ use Doctrine\ORM\Configuration;
 use Doctrine\ORM\Tools\Setup;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
 use Doctrine\ORM\Mapping\Driver\DriverChain;
+use Doctrine\Common\EventManager;
+use Doctrine\Common\EventSubscriber;
+use Gedmo\DoctrineExtensions;
 
 /**
  * Entity Manager Facade
@@ -40,6 +43,24 @@ class Manager extends \Facade
 	 * @var EntityManager
 	 */
 	protected $entityManager;
+
+	/**
+	 * The map of supported behaviors
+	 *
+	 * @var array
+	 */
+	protected static $behaviorMap = array(
+		'blameable'      => 'Gedmo\\Blameable\\BlameableListener',
+		'iptraceable'    => 'Gedmo\\IpTraceable\\IpTraceableListener',
+		'loggable'       => 'Gedmo\\Loggable\\LoggableListener',
+		'sluggable'      => 'Gedmo\\Sluggable\\SluggableListener',
+		'soft_deletable' => 'Gedmo\\SoftDeletable\\SoftDeletableListener',
+		'sortable'       => 'Gedmo\\Sortable\\SortableListener',
+		'timestampable'  => 'Gedmo\\Timestampable\\TimestampableListener',
+		'translatable'   => 'Gedmo\\Translatable\\TranslatableListener',
+		'tree'           => 'Gedmo\\Tree\\TreeListener',
+		'uploadable'     => 'Gedmo\\Uploadable\\UploadableListener',
+	);
 
 	/**
 	 * {@inheritdoc}
@@ -139,6 +160,8 @@ class Manager extends \Facade
 
 		$conn = \Dbal::forge($this->getConfig('dbal', 'default'));
 		$evm = $conn->getEventManager();
+
+		$this->registerBehaviors($evm, $config);
 
 		return $this->entityManager = EntityManager::create($conn, $config, $evm);
 	}
@@ -541,5 +564,67 @@ class Manager extends \Facade
 		}
 
 		return trim(str_replace(array('_', '-'), '\\', \Inflector::classify($componentName)), '\\');
+	}
+
+	/**
+	 * Registers subscribers to Event Manager
+	 *
+	 * @param EventManager $evm
+	 */
+	protected function registerBehaviors(EventManager $evm, Configuration $config)
+	{
+		$reader = new AnnotationReader;
+
+		if ($cache = $config->getMetadataCacheImpl())
+		{
+			$reader = new CachedReader($reader, $cache);
+		}
+
+		foreach ($this->getConfig('behaviors', array()) as $behavior)
+		{
+			if (!array_key_exists($behavior, self::$behaviorMap))
+			{
+				throw new \InvalidArgumentException('Unknown behavior');
+			}
+
+			$class = new self::$behaviorMap[$behavior];
+
+			$class->setAnnotationReader($reader);
+
+			$this->configureBehavior($behavior, $class);
+
+			$evm->addEventSubscriber($class);
+		}
+
+		if ($mapping = $config->getMetadataDriverImpl())
+		{
+			$type = 'registerMappingIntoDriverChainORM';
+
+			if ($this->getConfig('behavior.superclass', false))
+			{
+				$type = 'registerAbstractMappingIntoDriverChainORM';
+			}
+
+			DoctrineExtensions::$type(
+				$mapping,
+				$reader
+			);
+		}
+	}
+
+	/**
+	 * Configures Behavior Subscriber
+	 *
+	 * @param  string          $behavior
+	 * @param  EventSubscriber $es
+	 */
+	protected function configureBehavior($behavior, EventSubscriber $es)
+	{
+		switch ($behavior) {
+			case 'translatable':
+				$es->setTranslatableLocale(\Config::get('language', 'en'));
+				$es->setDefaultLocale(\Config::get('language_fallback', 'en'));
+				break;
+		}
 	}
 }
