@@ -35,9 +35,9 @@ class Doctrine
 	 */
 	public function run()
 	{
-		$db = getenv('DB') ?: 'default';
+		$db = getenv('DB') ?: null;
 
-		$entityManager = \Doctrine\Manager::forge($db);
+		$entityManager = \Doctrine\Manager::forge($db)->getEntityManager();
 
 		$helperSet = new HelperSet(array(
 			'em' => new EntityManagerHelper($entityManager)
