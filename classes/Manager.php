@@ -215,16 +215,6 @@ class Manager extends \Facade
 	}
 
 	/**
-	 * Returns default extension
-	 *
-	 * @return string
-	 */
-	public function getExtension()
-	{
-		return $this->getConfig('mapping.extension', 'dcm');
-	}
-
-	/**
 	 * Returns default config path
 	 *
 	 * @return string
@@ -289,40 +279,62 @@ class Manager extends \Facade
 	{
 		$driverChain = new DriverChain;
 		$aliasMap = array();
+		$drivers = array();
 
 		$this->parseMappingInfo();
 
+		// Get actual drivers
 		foreach ($this->getMappings() as $mappingName => $mappingConfig)
 		{
-			if ($mappingConfig['type'] === 'annotation')
+			if (empty($mappingConfig['prefix']))
 			{
-				$driver = $config->newDefaultAnnotationDriver($mappingConfig['dir']);
+				$mappingConfig['prefix'] = '__DEFAULT__';
+			}
+
+			$drivers[$mappingConfig['type']][$mappingConfig['prefix']] = $mappingConfig['dir'];
+
+			if (isset($mappingConfig['alias']))
+			{
+				$aliasMap[$mappingConfig['alias']] = $mappingConfig['prefix'];
+			}
+		}
+
+		foreach ($drivers as $driverType => $driverPaths)
+		{
+			if ($driverType === 'annotation')
+			{
+				$driver = $config->newDefaultAnnotationDriver($driverPaths);
 				// Annotations are needed to be registered, thanks Doctrine
 				// $driver = new AnnotationDriver(
 				// 	new CachedReader(
 				// 		new AnnotationReader,
 				// 		$config->getMetadataCacheImpl()
 				// 	),
-				// 	$mappingConfig['dir']
+				// 	$driverPaths
 				// );
 			}
 			else
 			{
-				$driver = \Doctrine\Metadata::create($mappingConfig['type'], $mappingConfig['dir']);
+				$paths = $driverPaths;
+
+				if (strpos($driverType, 'simplified') === 0)
+				{
+					$paths = array_flip($driverPaths);
+				}
+
+				$driver = \Doctrine\Metadata::create($driverType, $paths);
 			}
 
-			if (empty($mappingConfig['prefix']) or count($this->config['mappings']) === 1)
+			foreach ($driverPaths as $prefix => $driverPath)
 			{
-				$driverChain->setDefaultDriver($driver);
-			}
-			else
-			{
-				$driverChain->addDriver($driver, $mappingConfig['prefix']);
-			}
-
-			if (isset($mappingConfig['alias']))
-			{
-				$aliasMap[$mappingConfig['alias']] = $mappingConfig['prefix'];
+				if ($prefix === '__DEFAULT__' or count($this->config['mappings']) === 1)
+				{
+					$driverChain->setDefaultDriver($driver);
+				}
+				else
+				{
+					$driverChain->addDriver($driver, $prefix);
+				}
 			}
 		}
 
@@ -523,21 +535,27 @@ class Manager extends \Facade
 	 */
 	protected function detectMetadataDriver($dir, $configPath)
 	{
-		$extension = $this->getExtension();
-
 		foreach ((array) $configPath as $cPath)
 		{
 			$path = $dir.DS.$cPath.DS;
 
-			if (($files = glob($path.'*.'.$extension.'.xml')) && count($files))
+			if (($files = glob($path.'*.dcm.xml')) && count($files))
 			{
 				return 'xml';
 			}
-			elseif (($files = glob($path.'*.'.$extension.'.yml')) && count($files))
+			elseif (($files = glob($path.'*.orm.xml')) && count($files))
+			{
+				return 'simplified_xml';
+			}
+			elseif (($files = glob($path.'*.dcm.yml')) && count($files))
 			{
 				return 'yml';
 			}
-			elseif (($files = glob($path.'*.'.$extension.'.php')) && count($files))
+			elseif (($files = glob($path.'*.orm.yml')) && count($files))
+			{
+				return 'simplified_yml';
+			}
+			elseif (($files = glob($path.'*.php')) && count($files))
 			{
 				return 'php';
 			}
@@ -566,7 +584,7 @@ class Manager extends \Facade
 			return '';
 		}
 
-		return trim(str_replace(array('_', '-'), '\\', \Inflector::classify($componentName)), '\\');
+		return trim(str_replace(array('_', '-'), '\\', \Inflector::classify($componentName)), '\\') . '\\' . $this->getObjectName();
 	}
 
 	/**

@@ -40,14 +40,8 @@ class ManagerTest extends Test
 		$this->manager = Manager::forge();
 
 		\Package::load('auth');
-		\Module::load(['module', 'module2', 'module3', 'module4']);
+		\Module::load(['module', 'module2', 'module3', 'module4', 'module5', 'module6']);
 	}
-
-	// public function _after()
-	// {
-	// 	\Package::unload('auth');
-	// 	\Module::unload(['module', 'module2', 'module3', 'module4']);
-	// }
 
 	/**
 	 * Loads advanced config
@@ -134,14 +128,12 @@ class ManagerTest extends Test
 	}
 
 	/**
-	 * @covers ::getExtension
 	 * @covers ::getConfigPath
 	 * @covers ::getClassPath
 	 * @covers ::getObjectName
 	 */
 	public function testDefault()
 	{
-		$this->assertEquals('dcm', $this->manager->getExtension());
 		$this->assertEquals('config/doctrine/', $this->manager->getConfigPath());
 		$this->assertEquals('classes/', $this->manager->getClassPath());
 		$this->assertEquals('Entity', $this->manager->getObjectName());
@@ -163,9 +155,13 @@ class ManagerTest extends Test
 		$this->assertArrayHasKey('module2::module', $actual);
 		$this->assertArrayHasKey('module3::module', $actual);
 		$this->assertArrayHasKey('module4::module', $actual);
+		$this->assertArrayHasKey('module5::module', $actual);
+		$this->assertArrayHasKey('module6::module', $actual);
 
 		$this->assertEquals('xml', $actual['module::module']['type']);
+		$this->assertEquals('simplified_xml', $actual['module5::module']['type']);
 		$this->assertEquals('yml', $actual['module2::module']['type']);
+		$this->assertEquals('simplified_yml', $actual['module6::module']['type']);
 		$this->assertEquals('php', $actual['module3::module']['type']);
 		$this->assertEquals('annotation', $actual['module4::module']['type']);
 	}

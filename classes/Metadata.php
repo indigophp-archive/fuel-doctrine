@@ -28,7 +28,7 @@ class Metadata
 	protected static $drivers = array(
 		'php'             => 'PHPDriver',
 		'simplified_xml'  => 'SimplifiedXmlDriver',
-		'simplified_yaml' => 'SimplifiedYamlDriver',
+		'simplified_yml'  => 'SimplifiedYamlDriver',
 		'xml'             => 'XmlDriver',
 		'yml'             => 'YamlDriver'
 	);
