@@ -156,6 +156,9 @@ class Manager extends \Facade
 			}
 		}
 
+		// Ugly hack for autoloading annotations
+		$config->newDefaultAnnotationDriver(array());
+
 		$this->registerMapping($config);
 
 		$conn = \Dbal::forge($this->getConfig('dbal', 'default'));
