@@ -10,3 +10,5 @@ $module_paths = \Config::get('module_paths', []);
 $module_paths[] = __DIR__.'/../_data/';
 
 \Config::set('module_paths', $module_paths);
+
+require_once __DIR__.'/stubs/Entities.php';
