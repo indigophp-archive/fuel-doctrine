@@ -15,6 +15,7 @@
         "composer/installers": "~1.0",
         "indigophp/fuel-core": "dev-develop",
         "indigophp/fuel-dbal": "dev-develop",
+        "indigophp/doctrine-extensions": "dev-develop",
         "doctrine/orm": "~2.4",
         "gedmo/doctrine-extensions": "~2.3"
     },
