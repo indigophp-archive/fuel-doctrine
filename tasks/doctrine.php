@@ -11,10 +11,10 @@
 
 namespace Fuel\Tasks;
 
+use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Helper\HelperSet;
 use Doctrine\ORM\Tools\Console\Helper\EntityManagerHelper;
 use Doctrine\ORM\Tools\Console\ConsoleRunner;
-
 /**
  * This ugly hack makes it possible to run doctrine commands from fuel context
  *
@@ -24,6 +24,31 @@ use Doctrine\ORM\Tools\Console\ConsoleRunner;
  */
 class Doctrine
 {
+	/**
+	 * Console version const
+	 */
+	const VERSION = '1.0.0';
+
+	/**
+	 * DBAL connection name
+	 *
+	 * @var string
+	 */
+	protected $db;
+
+	/**
+	 * Create task
+	 */
+	public function __construct()
+	{
+		// Removes oil args
+		array_shift($_SERVER['argv']);
+		array_shift($_SERVER['argv']);
+		$_SERVER['argc'] -= 2;
+
+		$this->db = getenv('DB') ?: null;
+	}
+
 	/**
 	 * Main Doctrine method
 	 *
@@ -35,19 +60,26 @@ class Doctrine
 	 */
 	public function run()
 	{
-		$db = getenv('DB') ?: null;
+		$em = \Doctrine\Manager::forge($this->db)->getEntityManager();
 
-		$entityManager = \Doctrine\Manager::forge($db)->getEntityManager();
+		$helperSet = ConsoleRunner::createHelperSet($em);
+		$commands = array();
 
-		$helperSet = new HelperSet(array(
-			'em' => new EntityManagerHelper($entityManager)
-		));
+		if (class_exists('Doctrine\\DBAL\\Migrations\\Migration'))
+		{
+			$helperSet->set(new DialogHelper(), 'dialog');
 
-		// Remove oil args
-		array_shift($_SERVER['argv']);
-		array_shift($_SERVER['argv']);
-		$_SERVER['argc'] -= 2;
+			$commands = array(
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\ExecuteCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\GenerateCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\LatestCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\MigrateCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\StatusCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\VersionCommand(),
+				new \Doctrine\DBAL\Migrations\Tools\Console\Command\DiffCommand(),
+			);
+		}
 
-		ConsoleRunner::run($helperSet);
+		ConsoleRunner::run($helperSet, $commands);
 	}
 }
