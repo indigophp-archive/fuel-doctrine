@@ -303,7 +303,7 @@ class Manager extends \Facade
 		{
 			if ($driverType === 'annotation')
 			{
-				$driver = $config->newDefaultAnnotationDriver($driverPaths);
+				$driver = $config->newDefaultAnnotationDriver($driverPaths, false);
 				// Annotations are needed to be registered, thanks Doctrine
 				// $driver = new AnnotationDriver(
 				// 	new CachedReader(
