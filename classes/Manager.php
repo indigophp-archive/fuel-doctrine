@@ -161,7 +161,7 @@ class Manager extends \Facade
 
 		$this->registerMapping($config);
 
-		$conn = \Dbal::forge($this->getConfig('dbal', 'default'));
+		$conn = \Dbal::forge($this->getConfig('dbal'));
 		$evm = $conn->getEventManager();
 
 		$this->registerBehaviors($evm, $config);
