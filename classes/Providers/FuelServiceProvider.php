@@ -14,7 +14,7 @@ namespace Indigo\Fuel\Doctrine\Providers;
 use Fuel\Dependency\ServiceProvider;
 
 /**
- * Provides DBAL service
+ * Provides Doctrine service
  *
  * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
  */
