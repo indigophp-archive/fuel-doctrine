@@ -14,6 +14,7 @@
     "require": {
         "composer/installers": "~1.0",
         "indigophp/fuel-core": "dev-develop",
+        "indigophp/fuel-dependency": "dev-develop",
         "indigophp/fuel-dbal": "dev-develop",
         "indigophp/doctrine-extensions": "dev-develop",
         "doctrine/orm": "~2.4",
