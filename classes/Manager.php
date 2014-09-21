@@ -128,9 +128,9 @@ class Manager extends \Facade
 	protected function createEntityManager()
 	{
 		// Cache can be null in case of auto setup
-		if ($cache = $this->getConfig('cache_driver', 'array'))
+		if ($cache = $this->getConfig('cache_driver', 'doctrine.cache.array'))
 		{
-			$cache = \Doctrine\Cache::create($cache);
+			$cache = DiC::resolve($cache);
 		}
 
 		// Auto or manual setup
@@ -323,7 +323,7 @@ class Manager extends \Facade
 					$paths = array_flip($driverPaths);
 				}
 
-				$driver = \Doctrine\Metadata::create($driverType, $paths);
+				$driver = DiC::resolve($driverType, [$paths]);
 			}
 
 			foreach ($driverPaths as $prefix => $driverPath)
