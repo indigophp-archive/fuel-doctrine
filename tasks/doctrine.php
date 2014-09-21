@@ -11,6 +11,7 @@
 
 namespace Fuel\Tasks;
 
+use Indigo\Fuel\Dependency\Container as DiC;
 use Symfony\Component\Console\Helper\DialogHelper;
 use Symfony\Component\Console\Helper\HelperSet;
 use Doctrine\ORM\Tools\Console\Helper\EntityManagerHelper;
@@ -46,7 +47,7 @@ class Doctrine
 		array_shift($_SERVER['argv']);
 		$_SERVER['argc'] -= 2;
 
-		$this->db = getenv('DB') ?: null;
+		$this->db = getenv('DB') ?: '__default__';
 	}
 
 	/**
@@ -60,7 +61,7 @@ class Doctrine
 	 */
 	public function run()
 	{
-		$em = \Doctrine\Manager::forge($this->db)->getEntityManager();
+		$em = DiC::multiton('doctrine.manager', $this->db)->getEntityManager();
 
 		$helperSet = ConsoleRunner::createHelperSet($em);
 		$commands = array();
