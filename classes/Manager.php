@@ -28,15 +28,9 @@ use Gedmo\DoctrineExtensions;
  *
  * @author Márk Sági-Kazár <mark.sagikazar@gmail.com>
  */
-class Manager extends \Facade
+class Manager
 {
-	use \Indigo\Core\Facade\Instance;
 	use \Indigo\Core\Helper\Config;
-
-	/**
-	 * {@inheritdoc}
-	 */
-	protected static $_config = 'doctrine';
 
 	/**
 	 * Entity Manager
@@ -44,66 +38,6 @@ class Manager extends \Facade
 	 * @var EntityManager
 	 */
 	protected $entityManager;
-
-	/**
-	 * The map of supported behaviors
-	 *
-	 * @var array
-	 */
-	protected static $behaviorMap = array(
-		'blameable'      => 'Gedmo\\Blameable\\BlameableListener',
-		'iptraceable'    => 'Gedmo\\IpTraceable\\IpTraceableListener',
-		'loggable'       => 'Gedmo\\Loggable\\LoggableListener',
-		'sluggable'      => 'Gedmo\\Sluggable\\SluggableListener',
-		'soft_deletable' => 'Gedmo\\SoftDeletable\\SoftDeletableListener',
-		'sortable'       => 'Gedmo\\Sortable\\SortableListener',
-		'timestampable'  => 'Gedmo\\Timestampable\\TimestampableListener',
-		'translatable'   => 'Gedmo\\Translatable\\TranslatableListener',
-		'tree'           => 'Gedmo\\Tree\\TreeListener',
-		'uploadable'     => 'Gedmo\\Uploadable\\UploadableListener',
-	);
-
-	/**
-	 * {@inheritdoc}
-	 */
-	public static function forge($instance = null)
-	{
-		// Try to get the default instance
-		if ($instance === null)
-		{
-			static::$_instance = $instance = \Config::get('doctrine.default_manager', 'default');
-		}
-
-		// Remove some keys from config, not used anymore
-		$config = \Config::get('doctrine', array());
-		$config = \Arr::filter_keys($config, array('default_manager', 'managers'), true);
-
-		// We have defined managers
-		if ($managers = \Config::get('doctrine.managers', false))
-		{
-			// Get managers and retrive manager specific configuration
-			$manager = \Arr::get($managers, $instance, array());
-
-			$manager = array_merge($config, $manager);
-
-			if (\Arr::get($manager, 'mapping.auto', false) and count($managers) > 1)
-			{
-				throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
-			}
-		}
-		elseif ($instance === static::$_instance)
-		{
-			$manager = $config;
-		}
-
-		// We don't have any data
-		if (empty($manager))
-		{
-			throw new \InvalidArgumentException('No manager data for this instance: ' . $instance);
-		}
-
-		return static::newInstance($instance, new static($manager));
-	}
 
 	/**
 	 * Creates a new Manager
@@ -604,18 +538,14 @@ class Manager extends \Facade
 
 		foreach ($this->getConfig('behaviors', array()) as $behavior)
 		{
-			if (!array_key_exists($behavior, self::$behaviorMap))
+			if ($class = DiC::resolve('doctrine.behavior.'.$behavior))
 			{
-				throw new \InvalidArgumentException('Unknown behavior');
+				$class->setAnnotationReader($reader);
+
+				$this->configureBehavior($behavior, $class);
+
+				$evm->addEventSubscriber($class);
 			}
-
-			$class = new self::$behaviorMap[$behavior];
-
-			$class->setAnnotationReader($reader);
-
-			$this->configureBehavior($behavior, $class);
-
-			$evm->addEventSubscriber($class);
 		}
 
 		if ($mapping = $config->getMetadataDriverImpl())

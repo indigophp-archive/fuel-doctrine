@@ -25,6 +25,7 @@ class FuelServiceProvider extends ServiceProvider
 	 * {@inheritdoc}
 	 */
 	public $provides = [
+		'doctrine.manager',
 		'doctrine.metadata.php',
 		'doctrine.metadata.xml',
 		'doctrine.metadata.simplified_xml',
@@ -66,6 +67,11 @@ class FuelServiceProvider extends ServiceProvider
 		{
 			\Config::set('dbal.managers.__default__', []);
 		}
+
+		// if (\Arr::get($manager, 'mapping.auto', false) and count($managers) > 1)
+		// {
+		// 	throw new \LogicException('Auto mapping is only possible if exactly one manager is used.');
+		// }
 	}
 
 	/**
@@ -73,30 +79,36 @@ class FuelServiceProvider extends ServiceProvider
 	 */
 	public function provide()
 	{
-		// Metadata drivers
+		$this->register('doctrine.manager', function($dic, $name = '__default__', array $config = [])
+		{
+			$config = array_merge($this->defaultConfig, \Config::get('doctrine.managers.'.$name, []), $config);
+
+			return $dic->resolve('Indigo\\Fuel\\Doctrine\\Manager', [$config]);
+		});
+
 		$this->register('doctrine.metadata.php', function($dic, $paths = [])
 		{
-			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\PHPDriver', [$paths]);
+			return $dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\PHPDriver', [$paths]);
 		});
 
 		$this->register('doctrine.metadata.xml', function($dic, $paths = [])
 		{
-			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\XmlDriver', [$paths]);
+			return $dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\XmlDriver', [$paths]);
 		});
 
 		$this->register('doctrine.metadata.simplified_xml', function($dic, $paths = [])
 		{
-			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\SimplifiedXmlDriver', [$paths]);
+			return $dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\SimplifiedXmlDriver', [$paths]);
 		});
 
 		$this->register('doctrine.metadata.yml', function($dic, $paths = [])
 		{
-			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\YamlDriver', [$paths]);
+			return $dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\YamlDriver', [$paths]);
 		});
 
 		$this->register('doctrine.metadata.simplified_yml', function($dic, $paths = [])
 		{
-			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\SimplifiedYamlDriver', [$paths]);
+			return $dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\SimplifiedYamlDriver', [$paths]);
 		});
 
 		$this->register('doctrine.cache.array', 'Doctrine\\Common\\Cache\\ArrayCache');
