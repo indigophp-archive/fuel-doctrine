@@ -96,7 +96,7 @@ class Manager
 
 		$this->registerMapping($config);
 
-		$conn = DiC::multiton('dbal', '__default__', [$this->getConfig('dbal')]);
+		$conn = DiC::multiton('dbal', $this->getConfig('dbal'), [$this->getConfig('dbal')]);
 		$evm = $conn->getEventManager();
 
 		$this->registerBehaviors($evm, $config);
