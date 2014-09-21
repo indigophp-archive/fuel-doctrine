@@ -62,8 +62,10 @@ class Manager
 	protected function createEntityManager()
 	{
 		// Cache can be null in case of auto setup
-		if ($cache = $this->getConfig('cache_driver', 'doctrine.cache.array'))
+		if ($cache = $this->getConfig('cache_driver', 'array'))
 		{
+			$cache = 'doctrine.cache.'.$cache;
+
 			$cache = DiC::resolve($cache);
 		}
 
