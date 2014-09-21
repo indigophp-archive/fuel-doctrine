@@ -12,6 +12,7 @@
 namespace Indigo\Fuel\Doctrine\Providers;
 
 use Fuel\Dependency\ServiceProvider;
+use Doctrine\Common\Cache\Cache;
 
 /**
  * Provides Doctrine service
@@ -29,12 +30,21 @@ class FuelServiceProvider extends ServiceProvider
 		'doctrine.metadata.simplified_xml',
 		'doctrine.metadata.yml',
 		'doctrine.metadata.simplified_yml',
-		'doctrine.cache',
 		'doctrine.cache.array',
 		'doctrine.cache.apc',
 		'doctrine.cache.xcache',
 		'doctrine.cache.wincache',
 		'doctrine.cache.zend',
+		'doctrine.behavior.blameable',
+		'doctrine.behavior.iptraceable',
+		'doctrine.behavior.loggable',
+		'doctrine.behavior.sluggable',
+		'doctrine.behavior.soft_deletable',
+		'doctrine.behavior.sortable',
+		'doctrine.behavior.timestampable',
+		'doctrine.behavior.translatable',
+		'doctrine.behavior.tree',
+		'doctrine.behavior.uploadable',
 	];
 
 	/**
@@ -54,7 +64,7 @@ class FuelServiceProvider extends ServiceProvider
 		// We don't have defined managers
 		if ($managers = \Arr::get($config, 'managers', false) and ! empty($managers))
 		{
-			\Config::set('dbal.managers.__default__', $this->defaultConfig);
+			\Config::set('dbal.managers.__default__', []);
 		}
 	}
 
@@ -89,12 +99,30 @@ class FuelServiceProvider extends ServiceProvider
 			$dic->resolve('Doctrine\\ORM\\Mapping\\Driver\\SimplifiedYamlDriver', [$paths]);
 		});
 
-		// Caches
-		$this->register('doctrine.cache', 'Doctrine\\Common\\Cache\\ArrayCache');
 		$this->register('doctrine.cache.array', 'Doctrine\\Common\\Cache\\ArrayCache');
 		$this->register('doctrine.cache.apc', 'Doctrine\\Common\\Cache\\ApcCache');
 		$this->register('doctrine.cache.xcache', 'Doctrine\\Common\\Cache\\XcacheCache');
 		$this->register('doctrine.cache.wincache', 'Doctrine\\Common\\Cache\\WincacheCache');
 		$this->register('doctrine.cache.zend', 'Doctrine\\Common\\Cache\\ZendDataCache');
+
+		$this->register('doctrine.behavior.blameable', 'Gedmo\\Blameable\\BlameableListener');
+		$this->register('doctrine.behavior.iptraceable', 'Gedmo\\IpTraceable\\IpTraceableListener');
+		$this->register('doctrine.behavior.loggable', 'Gedmo\\Loggable\\LoggableListener');
+		$this->register('doctrine.behavior.sluggable', 'Gedmo\\Sluggable\\SluggableListener');
+		$this->register('doctrine.behavior.soft_deletable', 'Gedmo\\SoftDeletable\\SoftDeletableListener');
+		$this->register('doctrine.behavior.sortable', 'Gedmo\\Sortable\\SortableListener');
+		$this->register('doctrine.behavior.timestampable', 'Gedmo\\Timestampable\\TimestampableListener');
+
+		$this->register('doctrine.behavior.translatable', function($dic)
+		{
+			$es = $dic->resolve('Gedmo\\Translatable\\TranslatableListener');
+			$es->setTranslatableLocale(\Config::get('language', 'en'));
+			$es->setDefaultLocale(\Config::get('language_fallback', 'en'));
+
+			return $es;
+		});
+
+		$this->register('doctrine.behavior.tree', 'Gedmo\\Tree\\TreeListener');
+		$this->register('doctrine.behavior.uploadable', 'Gedmo\\Uploadable\\UploadableListener');
 	}
 }
