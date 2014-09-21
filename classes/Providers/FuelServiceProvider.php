@@ -49,7 +49,7 @@ class FuelServiceProvider extends ServiceProvider
 		\Config::load('doctrine', true);
 
 		$config = \Config::get('doctrine', []);
-		$this->defaultConfig = \Arr::filter_keys($config, ['connections', 'types'], true);
+		$this->defaultConfig = \Arr::filter_keys($config, ['managers', 'types'], true);
 
 		// We don't have defined managers
 		if ($managers = \Arr::get($config, 'managers', false) and ! empty($managers))

@@ -29,10 +29,10 @@ class ManagerTest extends Test
 	{
 		is_dir(APPPATH.'classes/Entity') === false and mkdir(APPPATH.'classes/Entity');
 
-		$root = \Codeception\Configuration::projectDir();
+		$data = \Codeception\Configuration::dataDir();
 
-		$db = require $root.'/fuel/packages/dbal/tests/unit/config/db.php';
-		$config = require __DIR__.'/config/doctrine.php';
+		$db = require $data.'/config/db.php';
+		$config = require $data.'/config/doctrine.php';
 
 		\Config::set('db', $db);
 		\Config::set('doctrine', $config);
@@ -41,54 +41,6 @@ class ManagerTest extends Test
 
 		\Package::load('auth');
 		\Module::load(['module', 'module2', 'module3', 'module4', 'module5', 'module6']);
-	}
-
-	/**
-	 * Loads advanced config
-	 */
-	public function advancedConfig()
-	{
-		$config = require __DIR__.'/config/advanced.php';
-		$config = array_merge(\Config::get('doctrine', []), $config);
-
-		\Config::set('doctrine', $config);
-	}
-
-	/**
-	 * @covers ::forge
-	 */
-	public function testForge()
-	{
-		\Config::delete('doctrine.managers');
-
-		$manager = Manager::forge();
-
-		$this->assertInstanceOf('Indigo\\Fuel\\Doctrine\\Manager', $manager);
-	}
-
-	/**
-	 * @covers ::forge
-	 */
-	public function testAdvancedForge()
-	{
-		$this->advancedConfig();
-
-		\Config::set('doctrine.mapping.auto', false);
-
-		$manager = Manager::forge();
-
-		$this->assertInstanceOf('Indigo\\Fuel\\Doctrine\\Manager', $manager);
-	}
-
-	/**
-	 * @covers            ::forge
-	 * @expectedException LogicException
-	 */
-	public function testForgeAutoMapping()
-	{
-		$this->advancedConfig();
-
-		Manager::forge();
 	}
 
 	/**

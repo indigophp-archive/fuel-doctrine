@@ -3,10 +3,11 @@
 
 $package = \Codeception\Configuration::projectDir();
 
+\Package::load('dependency', $package.'/fuel/packages/dependency/');
 \Package::load('doctrine', $package);
 
 $module_paths = \Config::get('module_paths', []);
 
-$module_paths[] = __DIR__.'/../_data/';
+$module_paths[] = \Codeception\Configuration::dataDir();
 
 \Config::set('module_paths', $module_paths);

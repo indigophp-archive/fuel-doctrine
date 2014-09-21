@@ -11,6 +11,7 @@
 
 namespace Indigo\Fuel\Doctrine;
 
+use Indigo\Fuel\Dependency\Container as DiC;
 use Doctrine\Common\Annotations\CachedReader;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\EntityManager;
@@ -161,7 +162,7 @@ class Manager extends \Facade
 
 		$this->registerMapping($config);
 
-		$conn = \Dbal::forge($this->getConfig('dbal'));
+		$conn = DiC::multiton('dbal', '__default__', [$this->getConfig('dbal')]);
 		$evm = $conn->getEventManager();
 
 		$this->registerBehaviors($evm, $config);
